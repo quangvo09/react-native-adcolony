@@ -16,11 +16,19 @@ import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.bridge.WritableArray;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
 
+import com.adcolony.sdk.AdColony;
+import com.adcolony.sdk.AdColonyAdOptions;
+import com.adcolony.sdk.AdColonyAppOptions;
+import com.adcolony.sdk.AdColonyInterstitial;
+import com.adcolony.sdk.AdColonyInterstitialListener;
+import com.adcolony.sdk.AdColonyUserMetadata;
+import com.adcolony.sdk.AdColonyZone;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-public class RNAdColonyInterstitialAdModule extends ReactContextBaseJavaModule {
+public class RNAdColonyInterstitialAdModule extends ReactContextBaseJavaModule implements AdColonyInterstitialListener {
 
     public static final String REACT_CLASS = "RNAdColonyInterstitial";
 
@@ -30,9 +38,14 @@ public class RNAdColonyInterstitialAdModule extends ReactContextBaseJavaModule {
     public static final String EVENT_AD_CLOSED = "interstitialAdClosed";
     public static final String EVENT_AD_LEFT_APPLICATION = "interstitialAdLeftApplication";
 
-    // InterstitialAd mInterstitialAd;
+    private String _adUnitID;
+    private String _zoneID;
+
+    private AdColonyInterstitial mInterstitialAd;
+    private AdColonyInterstitialListener listener;
 
     private Promise mRequestAdPromise;
+    private boolean isReady; 
 
     @Override
     public String getName() {
@@ -41,77 +54,23 @@ public class RNAdColonyInterstitialAdModule extends ReactContextBaseJavaModule {
 
     public RNAdColonyInterstitialAdModule(ReactApplicationContext reactContext) {
         super(reactContext);
-        mInterstitialAd = new InterstitialAd(reactContext);
 
-        new Handler(Looper.getMainLooper()).post(new Runnable() {
-            @Override
-            public void run() {
-                mInterstitialAd.setAdListener(new AdListener() {
-                    @Override
-                    public void onAdClosed() {
-                        sendEvent(EVENT_AD_CLOSED, null);
-                    }
-                    @Override
-                    public void onAdFailedToLoad(int errorCode) {
-                        String errorString = "ERROR_UNKNOWN";
-                        String errorMessage = "Unknown error";
-                        switch (errorCode) {
-                            case AdRequest.ERROR_CODE_INTERNAL_ERROR:
-                                errorString = "ERROR_CODE_INTERNAL_ERROR";
-                                errorMessage = "Internal error, an invalid response was received from the ad server.";
-                                break;
-                            case AdRequest.ERROR_CODE_INVALID_REQUEST:
-                                errorString = "ERROR_CODE_INVALID_REQUEST";
-                                errorMessage = "Invalid ad request, possibly an incorrect ad unit ID was given.";
-                                break;
-                            case AdRequest.ERROR_CODE_NETWORK_ERROR:
-                                errorString = "ERROR_CODE_NETWORK_ERROR";
-                                errorMessage = "The ad request was unsuccessful due to network connectivity.";
-                                break;
-                            case AdRequest.ERROR_CODE_NO_FILL:
-                                errorString = "ERROR_CODE_NO_FILL";
-                                errorMessage = "The ad request was successful, but no ad was returned due to lack of ad inventory.";
-                                break;
-                        }
-                        WritableMap event = Arguments.createMap();
-                        WritableMap error = Arguments.createMap();
-                        event.putString("message", errorMessage);
-                        sendEvent(EVENT_AD_FAILED_TO_LOAD, event);
-                        mRequestAdPromise.reject(errorString, errorMessage);
-                    }
-                    @Override
-                    public void onAdLeftApplication() {
-                        sendEvent(EVENT_AD_LEFT_APPLICATION, null);
-                    }
-                    @Override
-                    public void onAdLoaded() {
-                        sendEvent(EVENT_AD_LOADED, null);
-                        mRequestAdPromise.resolve(null);
-                    }
-                    @Override
-                    public void onAdOpened() {
-                        sendEvent(EVENT_AD_OPENED, null);
-                    }
-                });
-            }
-        });
+        listener = this;
+        mInterstitialAd = new InterstitialAd(reactContext);
     }
+
     private void sendEvent(String eventName, @Nullable WritableMap params) {
         getReactApplicationContext().getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit(eventName, params);
     }
 
     @ReactMethod
     public void setAdUnitID(String adUnitID) {
-        if (mInterstitialAd.getAdUnitId() == null) {
-            mInterstitialAd.setAdUnitId(adUnitID);
-        }
+        _adUnitID = adUnitID;
     }
 
     @ReactMethod
-    public void setTestDevices(ReadableArray testDevices) {
-        ReadableNativeArray nativeArray = (ReadableNativeArray)testDevices;
-        ArrayList<Object> list = nativeArray.toArrayList();
-        this.testDevices = list.toArray(new String[list.size()]);
+    public void setZoneID(String zoneID) {
+        _zoneID = zoneID;
     }
 
     @ReactMethod
@@ -119,23 +78,9 @@ public class RNAdColonyInterstitialAdModule extends ReactContextBaseJavaModule {
         new Handler(Looper.getMainLooper()).post(new Runnable() {
             @Override
             public void run () {
-                if (mInterstitialAd.isLoaded() || mInterstitialAd.isLoading()) {
-                    promise.reject("E_AD_ALREADY_LOADED", "Ad is already loaded.");
-                } else {
-                    mRequestAdPromise = promise;
-                    AdRequest.Builder adRequestBuilder = new AdRequest.Builder();
-                    if (testDevices != null) {
-                        for (int i = 0; i < testDevices.length; i++) {
-                            String testDevice = testDevices[i];
-                            if (testDevice == "SIMULATOR") {
-                                testDevice = AdRequest.DEVICE_ID_EMULATOR;
-                            }
-                            adRequestBuilder.addTestDevice(testDevice);
-                        }
-                    }
-                    AdRequest adRequest = adRequestBuilder.build();
-                    mInterstitialAd.loadAd(adRequest);
-                }
+              isReady = false;
+              mRequestAdPromise = promise;
+              AdColony.requestInterstitial(_zoneID, listener);
             }
         });
     }
@@ -145,7 +90,7 @@ public class RNAdColonyInterstitialAdModule extends ReactContextBaseJavaModule {
         new Handler(Looper.getMainLooper()).post(new Runnable() {
             @Override
             public void run () {
-                if (mInterstitialAd.isLoaded()) {
+                if (isReady) {
                     mInterstitialAd.show();
                     promise.resolve(null);
                 } else {
@@ -160,8 +105,45 @@ public class RNAdColonyInterstitialAdModule extends ReactContextBaseJavaModule {
         new Handler(Looper.getMainLooper()).post(new Runnable() {
             @Override
             public void run () {
-                callback.invoke(mInterstitialAd.isLoaded());
+                callback.invoke(isReady);
             }
         });
+    }
+
+    @Override
+    public void onRequestFilled(AdColonyInterstitial ad) {
+      sendEvent(EVENT_AD_LOADED, null);
+      isReady = true;
+      if (mRequestAdPromise != null) {
+        mRequestAdPromise.resolve(null);
+      }
+    }
+ 
+    @Override
+    public void onRequestNotFilled(AdColonyZone zone) {
+      WritableMap event = Arguments.createMap();
+      WritableMap error = Arguments.createMap();
+      String errorMessage = "Ad request was not filled";
+      event.putString("message", errorMessage);
+      sendEvent(EVENT_AD_FAILED_TO_LOAD, event);
+
+      if (mRequestAdPromise != null) {
+        mRequestAdPromise.reject(errorString, errorMessage);
+      }
+    }
+
+    @Override
+    public void onOpened(AdColonyInterstitial ad) {
+        sendEvent(EVENT_AD_OPENED, null);
+    }
+
+    @Override
+    public void onClosed(AdColonyInterstitial ad) {
+        sendEvent(EVENT_AD_CLOSED, null);
+    }
+
+    @Override
+    public void onExpiring(AdColonyInterstitial ad) {
+        isReady = false;
     }
 }
