@@ -17,6 +17,6 @@ public class RNRnAdcolonyModule extends ReactContextBaseJavaModule {
 
   @Override
   public String getName() {
-    return "RNRnAdcolony";
+    return "RNAdcolony";
   }
 }
