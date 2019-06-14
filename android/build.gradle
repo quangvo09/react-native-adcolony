@@ -32,6 +32,6 @@ repositories {
 
 dependencies {
     compile 'com.facebook.react:react-native:+',
-    implementation 'com.adcolony:sdk:3.3.10'
+    compile 'com.adcolony:sdk:3.3.10'
 }
   
