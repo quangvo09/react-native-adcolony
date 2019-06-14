@@ -28,7 +28,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-public class RNAdColonyInterstitialAdModule extends ReactContextBaseJavaModule implements AdColonyInterstitialListener {
+public class RNAdColonyInterstitialAdModule extends ReactContextBaseJavaModule {
 
     public static final String REACT_CLASS = "RNAdColonyInterstitial";
 
@@ -55,8 +55,45 @@ public class RNAdColonyInterstitialAdModule extends ReactContextBaseJavaModule i
     public RNAdColonyInterstitialAdModule(ReactApplicationContext reactContext) {
         super(reactContext);
 
-        listener = this;
         mInterstitialAd = new InterstitialAd(reactContext);
+        listener = new AdColonyInterstitialListener() {
+            @Override
+            public void onRequestFilled(AdColonyInterstitial ad) {
+              sendEvent(EVENT_AD_LOADED, null);
+              isReady = true;
+              if (mRequestAdPromise != null) {
+                mRequestAdPromise.resolve(null);
+              }
+            }
+        
+            @Override
+            public void onRequestNotFilled(AdColonyZone zone) {
+              WritableMap event = Arguments.createMap();
+              WritableMap error = Arguments.createMap();
+              String errorMessage = "Ad request was not filled";
+              event.putString("message", errorMessage);
+              sendEvent(EVENT_AD_FAILED_TO_LOAD, event);
+
+              if (mRequestAdPromise != null) {
+                mRequestAdPromise.reject(errorString, errorMessage);
+              }
+            }
+
+            @Override
+            public void onOpened(AdColonyInterstitial ad) {
+                sendEvent(EVENT_AD_OPENED, null);
+            }
+
+            @Override
+            public void onClosed(AdColonyInterstitial ad) {
+                sendEvent(EVENT_AD_CLOSED, null);
+            }
+
+            @Override
+            public void onExpiring(AdColonyInterstitial ad) {
+                isReady = false;
+            }
+        };
     }
 
     private void sendEvent(String eventName, @Nullable WritableMap params) {
@@ -108,42 +145,5 @@ public class RNAdColonyInterstitialAdModule extends ReactContextBaseJavaModule i
                 callback.invoke(isReady);
             }
         });
-    }
-
-    @Override
-    public void onRequestFilled(AdColonyInterstitial ad) {
-      sendEvent(EVENT_AD_LOADED, null);
-      isReady = true;
-      if (mRequestAdPromise != null) {
-        mRequestAdPromise.resolve(null);
-      }
-    }
- 
-    @Override
-    public void onRequestNotFilled(AdColonyZone zone) {
-      WritableMap event = Arguments.createMap();
-      WritableMap error = Arguments.createMap();
-      String errorMessage = "Ad request was not filled";
-      event.putString("message", errorMessage);
-      sendEvent(EVENT_AD_FAILED_TO_LOAD, event);
-
-      if (mRequestAdPromise != null) {
-        mRequestAdPromise.reject(errorString, errorMessage);
-      }
-    }
-
-    @Override
-    public void onOpened(AdColonyInterstitial ad) {
-        sendEvent(EVENT_AD_OPENED, null);
-    }
-
-    @Override
-    public void onClosed(AdColonyInterstitial ad) {
-        sendEvent(EVENT_AD_CLOSED, null);
-    }
-
-    @Override
-    public void onExpiring(AdColonyInterstitial ad) {
-        isReady = false;
     }
 }
