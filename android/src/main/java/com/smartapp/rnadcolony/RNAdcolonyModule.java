@@ -6,11 +6,11 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.Callback;
 
-public class RNRnAdcolonyModule extends ReactContextBaseJavaModule {
+public class RNAdcolonyModule extends ReactContextBaseJavaModule {
 
   private final ReactApplicationContext reactContext;
 
-  public RNRnAdcolonyModule(ReactApplicationContext reactContext) {
+  public RNAdcolonyModule(ReactApplicationContext reactContext) {
     super(reactContext);
     this.reactContext = reactContext;
   }
