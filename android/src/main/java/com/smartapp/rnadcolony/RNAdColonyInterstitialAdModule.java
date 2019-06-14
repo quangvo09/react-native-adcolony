@@ -55,10 +55,10 @@ public class RNAdColonyInterstitialAdModule extends ReactContextBaseJavaModule {
     public RNAdColonyInterstitialAdModule(ReactApplicationContext reactContext) {
         super(reactContext);
 
-        mInterstitialAd = new InterstitialAd(reactContext);
         listener = new AdColonyInterstitialListener() {
             @Override
             public void onRequestFilled(AdColonyInterstitial ad) {
+              mInterstitialAd = ad;
               sendEvent(EVENT_AD_LOADED, null);
               isReady = true;
               if (mRequestAdPromise != null) {
@@ -68,10 +68,13 @@ public class RNAdColonyInterstitialAdModule extends ReactContextBaseJavaModule {
         
             @Override
             public void onRequestNotFilled(AdColonyZone zone) {
+              String errorString = "ERROR_CODE_NO_FILL";
+              String errorMessage = "Ad request was not filled";
+
               WritableMap event = Arguments.createMap();
               WritableMap error = Arguments.createMap();
-              String errorMessage = "Ad request was not filled";
               event.putString("message", errorMessage);
+
               sendEvent(EVENT_AD_FAILED_TO_LOAD, event);
 
               if (mRequestAdPromise != null) {

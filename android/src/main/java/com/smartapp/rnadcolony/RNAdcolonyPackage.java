@@ -13,7 +13,6 @@ import com.facebook.react.bridge.JavaScriptModule;
 public class RNAdcolonyPackage implements ReactPackage {
     @Override
     public List<NativeModule> createNativeModules(ReactApplicationContext reactContext) {
-      return Arrays.<NativeModule>asList();
       return Arrays.<NativeModule>asList(
           new RNAdcolonyModule(reactContext),
           new RNAdColonyInterstitialAdModule(reactContext)
