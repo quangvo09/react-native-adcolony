@@ -1,6 +1,6 @@
 
 module.exports = {
   get AdColonyInterstitial() {
-    return require('./RNAdMobInterstitial').default;
+    return require('./RNAdColonyInterstitial').default;
   }
 };

@@ -60,18 +60,13 @@ RCT_EXPORT_METHOD(setZoneID:(NSString *)zoneID)
     _zoneID = zoneID;
 }
 
-RCT_EXPORT_METHOD(setTestDevices:(NSArray *)testDevices)
-{
-    _testDevices = RNAdMobProcessTestDevices(testDevices, kGADSimulatorID);
-}
-
 RCT_EXPORT_METHOD(requestAd:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
 {
-    self.isReady = false;
+    isReady = false;
     _requestAdResolve = resolve;
     _requestAdReject = reject;
 
-    [AdColony requestInterstitialInZone:self._zoneID options:nil success:^(AdColonyInterstitial *ad) {
+    [AdColony requestInterstitialInZone:_zoneID options:nil success:^(AdColonyInterstitial *ad) {
       ad.open = ^{
         [self interstitialWillPresentScreen];
       };
@@ -79,21 +74,21 @@ RCT_EXPORT_METHOD(requestAd:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromise
         [self interstitialWillDismissScreen];
       };
 
-      self._interstitial = ad;
-      self.isReady = true;
+      _interstitial = ad;
+      isReady = true;
 
       [self interstitialDidReceiveAd];
 
     } failure:^(AdColonyAdRequestError *error) {
-      self.isReady = false;
-      [self interstitialDidReceiveAd:error]
+        isReady = false;
+        [self didFailToReceiveAdWithError:error];
     }];
 }
 
 RCT_EXPORT_METHOD(showAd:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
 {
-    if (self.isReady) {
-      [self.ad showWithPresentingViewController:[UIApplication sharedApplication].delegate.window.rootViewController];
+    if (isReady) {
+      [_interstitial showWithPresentingViewController:[UIApplication sharedApplication].delegate.window.rootViewController];
       resolve(nil);
     }
     else {
@@ -103,7 +98,7 @@ RCT_EXPORT_METHOD(showAd:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRej
 
 RCT_EXPORT_METHOD(isReady:(RCTResponseSenderBlock)callback)
 {
-    callback(@[[NSNumber numberWithBool:self.isReady]]);
+    callback(@[[NSNumber numberWithBool:isReady]]);
 }
 
 - (void)startObserving
@@ -135,7 +130,7 @@ RCT_EXPORT_METHOD(isReady:(RCTResponseSenderBlock)callback)
 
 - (void)interstitialWillPresentScreen
 {
-    if (hasListeners){
+    if (hasListeners) {
         [self sendEventWithName:kEventAdOpened body:nil];
     }
 }
